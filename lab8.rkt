@@ -44,9 +44,15 @@
   (zhrl-err "unimplemented"))
 
 ;; # Tests
-(define envirt00 : Environ (make-immutable-hash '((x . 0)
+(define envirt00 : Environ (make-immutable-hash '()))
+(define envirt01 : Environ (make-immutable-hash '((x . 0))))
+(define envirt02 : Environ (make-immutable-hash '((x . 0)
                                                   (y . 1))))
-(define storet00 : Store  (make-immutable-hash `((0 . ,(ArrayV 1 1))
+(define storet00 : Store  (make-immutable-hash '()))
+(define storet01 : Store  (make-immutable-hash '((0 . 1))))
+(define storet02 : Store  (make-immutable-hash '((0 . 1)
+                                                 (1 . 0))))
+(define storet03 : Store  (make-immutable-hash `((0 . ,(ArrayV 1 1))
                                                  (1 . 1)
                                                  (2 . 0))))
 
