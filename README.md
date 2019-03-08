@@ -1,8 +1,9 @@
-# Mark-and-Sweep Garbage Collector for ZHRL Store
+# Lab 8
 
-Specification: [Lab 8](https://www.brinckerhoff.org/clements/2192-csc430/Labs/lab8.html).
+## Specification
+<https://www.brinckerhoff.org/clements/2192-csc430/Labs/lab8.html>.
 
-Run tests:
+## Run Tests
 ```bash
-$racket lab8.rkt
+$ racket lab8.rkt
 ```
