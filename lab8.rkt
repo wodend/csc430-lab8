@@ -4,8 +4,8 @@
 
 ;; # Types, Data Definitions, and Global Helper Functions
 ;; raises a ZHRL error
-(: zhrl-err (-> String Symbol * Nothing))
-(define (zhrl-err mess . syms)
+(: err-zhrl (-> String Symbol * Nothing))
+(define (err-zhrl mess . syms)
   (error (string-append "ZHRL: " mess) syms))
 
 ;; represents an expression
@@ -14,23 +14,23 @@
               [body : ExpressC]) #:transparent)
 (struct ApplyC ([func : ExpressC]
                 [args : (Listof ExpressC)]) #:transparent)
-(struct IfC ([tesc : ExpressC]
-             [thec : ExpressC]
-             [elsc : ExpressC]) #:transparent)
-(struct SetC ([iden : Symbol]
-              [valu : ExpressC]))
+(struct IfC ([testc : ExpressC]
+             [thenc : ExpressC]
+             [elsec : ExpressC]) #:transparent)
+(struct SetC ([id : Symbol]
+              [val : ExpressC]))
 
 ;; represents a value
-(define-type Value (U Real Boolean String ClosureV PrimitiV ArrayV))
+(define-type Value (U Real Boolean String ClosureV PrimitV ArrayV))
 (struct ClosureV ([pars : (Listof Symbol)]
                   [body : ExpressC]
-                  [envi : Environ]))
-(define-type PrimitiV (U '+ '- '* '/))
-(struct ArrayV ([addr : Address] [leng : Natural])
+                  [env : Envir]))
+(define-type PrimitV (U '+ '- '* '/))
+(struct ArrayV ([addr : Address] [len : Natural])
         #:transparent)
 
 ;; represents an environment
-(define-type Environ (Immutable-HashTable Symbol Address))
+(define-type Envir (Immutable-HashTable Symbol Address))
 
 ;; represents an address
 (define-type Address Natural)
@@ -38,22 +38,32 @@
 ;; represents a store
 (define-type Store (Immutable-HashTable Address Value))
 
+;; # Garbage Collector
+(: seen-val (-> Value (Listof Address)))
+(define (seen-val val)
+  (match val
+    [(ArrayV a #{l : Integer})
+     #{(build-list l (lambda ([x : Index]) x)) : (Listof Nonnegative-Integer)}]
+    [_ '()]))
+
 ;; collect unreachable memory in the store
-(: collect (-> (Listof Environ) Store (Listof Address)))
-(define (collect envs stor)
-  (zhrl-err "unimplemented"))
+(: collect (-> (Listof Envir) Store (Listof Address)))
+(define (collect envs store)
+  (err-zhrl "unimplemented"))
 
 ;; # Tests
-(define envirt00 : Environ (make-immutable-hash '()))
-(define envirt01 : Environ (make-immutable-hash '((x . 0))))
-(define envirt02 : Environ (make-immutable-hash '((x . 0)
-                                                  (y . 1))))
-(define storet00 : Store  (make-immutable-hash '()))
-(define storet01 : Store  (make-immutable-hash '((0 . 1))))
-(define storet02 : Store  (make-immutable-hash '((0 . 1)
-                                                 (1 . 0))))
-(define storet03 : Store  (make-immutable-hash `((0 . ,(ArrayV 1 1))
-                                                 (1 . 1)
-                                                 (2 . 0))))
+(define env00 : Envir (make-immutable-hash '()))
+(define env01 : Envir (make-immutable-hash '((x . 0))))
+(define env02 : Envir (make-immutable-hash '((x . 0)
+                                             (y . 1))))
+(define store00 : Store  (make-immutable-hash '()))
+(define store01 : Store  (make-immutable-hash '((0 . 1))))
+(define store02 : Store  (make-immutable-hash '((0 . 1)
+                                                (1 . 0))))
+(define store03 : Store  (make-immutable-hash `((0 . ,(ArrayV 1 1))
+                                                (1 . 1)
+                                                (2 . 0))))
 
-(check-exn #rx"ZHRL: unimplemented" (lambda () (collect `(,envirt00) storet00)))
+(check-equal? (seen-val 0) '())
+(check-equal? (seen-val (ArrayV 0 2)) '(0 1))
+(check-exn #rx"ZHRL: unimplemented" (lambda () (collect `(,env00) store00)))
