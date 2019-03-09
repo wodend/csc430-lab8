@@ -39,18 +39,35 @@
 (define-type Store (Immutable-HashTable Address Value))
 
 ;; # Garbage Collector
-;; determine addresses seen by values 
-(: seen-val (-> Value (Listof Address)))
-(define (seen-val val)
+;; determine addresses referred to by a value
+(: val-addrs (-> Value (Listof Address)))
+(define (val-addrs val)
   (match val
     [(ArrayV a #{l : Integer})
-     #{(build-list l (lambda ([x : Index]) x)) : (Listof Nonnegative-Integer)}]
+     #{(build-list l (lambda ([x : Index]) (+ a x)))
+       : (Listof Nonnegative-Integer)}]
+    [(ClosureV ps b e) (map (lambda (x) (hash-ref e x)) ps)]
     [_ '()]))
 
-;; determine addresses seen by environments
-(: seen-env (-> Envir (Listof Address)))
-(define (seen-env env)
+;; determine addresses referred to by an environment
+(: env-addrs (-> Envir (Listof Address)))
+(define (env-addrs env)
   (remove-duplicates (hash-values env)))
+
+;; mark live addresses
+(: mark (-> (Listof Address) Store (Listof Address)))
+(define (mark uns store)
+  (match uns
+    ['() '()]
+    [`(,x . ,xs) (cons x (mark (append (val-addrs (hash-ref store x)) xs)
+                               store))]))
+
+;; sweep for garbage
+(: sweep (-> Store (Listof Address) (Listof Address)))
+(define (sweep store live)
+  (let ([as (list->set (hash-keys store))]
+        [l (list->set live)])
+    (set->list (set-subtract as l))))
 
 ;; collect unreachable memory in the store
 (: collect (-> (Listof Envir) Store (Listof Address)))
@@ -65,13 +82,18 @@
 (define store00 : Store  (make-immutable-hash '()))
 (define store01 : Store  (make-immutable-hash '((0 . 1))))
 (define store02 : Store  (make-immutable-hash '((0 . 1)
-                                                (1 . 0))))
-(define store03 : Store  (make-immutable-hash `((0 . ,(ArrayV 1 1))
-                                                (1 . 1)
-                                                (2 . 0))))
-
-(check-equal? (seen-val 0) '())
-(check-equal? (seen-val (ArrayV 0 2)) '(0 1))
-(check-equal? (seen-env env00) '())
-(check-equal? (seen-env env02) '(0 1))
+                                                (1 . 1))))
+(define store03 : Store  (make-immutable-hash `((0 . 1)
+                                                (1 . ,(ArrayV 2 1))
+                                                (2 . 1))))
+(check-equal? (val-addrs 0) '())
+(check-equal? (val-addrs (ArrayV 0 2)) '(0 1))
+(check-equal? (val-addrs (ClosureV '() '0 env00)) '())
+(check-equal? (val-addrs (ClosureV '(x y) 'y env02)) '(0 1))
+(check-equal? (env-addrs env00) '())
+(check-equal? (env-addrs env02) '(0 1))
+(check-equal? (sweep store00 '()) '())
+(check-equal? (sweep store02 '(0)) '(1))
+(check-equal? (mark (env-addrs env00) store00) '())
+(check-equal? (mark (env-addrs env02) store03) '(0 1 2))
 (check-exn #rx"ZHRL: unimplemented" (lambda () (collect `(,env00) store00)))
