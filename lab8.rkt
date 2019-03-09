@@ -3,11 +3,6 @@
 (require typed/rackunit)
 
 ;; # Types, Data Definitions, and Global Helper Functions
-;; raises a ZHRL error
-(: err-zhrl (-> String Symbol * Nothing))
-(define (err-zhrl mess . syms)
-  (error (string-append "ZHRL: " mess) syms))
-
 ;; represents an expression
 (define-type ExpressC (U Real Symbol String LamC ApplyC IfC SetC))
 (struct LamC ([pars : (Listof Symbol)]
@@ -72,7 +67,12 @@
 ;; collect unreachable memory in the store
 (: collect (-> (Listof Envir) Store (Listof Address)))
 (define (collect envs store)
-  (err-zhrl "unimplemented"))
+  (sweep store (mark (set->list (foldl (lambda ([x : Envir]
+                                                [y : (Setof Address)])
+                                         (set-union (list->set (env-addrs x))
+                                                    y))
+                                       (cast (set) (Setof Address))
+                                       envs)) store)))
 
 ;; # Tests
 (define env00 : Envir (make-immutable-hash '()))
@@ -94,6 +94,7 @@
 (check-equal? (env-addrs env02) '(0 1))
 (check-equal? (sweep store00 '()) '())
 (check-equal? (sweep store02 '(0)) '(1))
+(check-equal? (collect `(,env01 ,env02) store03) '())
+(check-equal? (collect `(,env00 ,env01) store02) '(1))
 (check-equal? (mark (env-addrs env00) store00) '())
 (check-equal? (mark (env-addrs env02) store03) '(0 1 2))
-(check-exn #rx"ZHRL: unimplemented" (lambda () (collect `(,env00) store00)))
