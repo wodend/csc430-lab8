@@ -39,12 +39,18 @@
 (define-type Store (Immutable-HashTable Address Value))
 
 ;; # Garbage Collector
+;; determine addresses seen by values 
 (: seen-val (-> Value (Listof Address)))
 (define (seen-val val)
   (match val
     [(ArrayV a #{l : Integer})
      #{(build-list l (lambda ([x : Index]) x)) : (Listof Nonnegative-Integer)}]
     [_ '()]))
+
+;; determine addresses seen by environments
+(: seen-env (-> Envir (Listof Address)))
+(define (seen-env env)
+  (remove-duplicates (hash-values env)))
 
 ;; collect unreachable memory in the store
 (: collect (-> (Listof Envir) Store (Listof Address)))
@@ -66,4 +72,6 @@
 
 (check-equal? (seen-val 0) '())
 (check-equal? (seen-val (ArrayV 0 2)) '(0 1))
+(check-equal? (seen-env env00) '())
+(check-equal? (seen-env env02) '(0 1))
 (check-exn #rx"ZHRL: unimplemented" (lambda () (collect `(,env00) store00)))
